@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THEBLAZE | OFFICIAL RECRUITMENT</title>
+    <link href="https://fonts.cdnfonts.com/css/minecraftia" rel="stylesheet">
+    <style>
+        :root {
+            --neon-green: #00ff88;
+            --neon-red: #ff0044;
+            --mc-dark: #121212;
+            --glass: rgba(20, 20, 20, 0.7);
+            /* Colores Botón Minecraft */
+            --mc-btn-bg: #aba3a3;
+            --mc-btn-border-light: #ffffff;
+            --mc-btn-border-dark: #5a5a5a;
+            --mc-btn-hover: #7e7e7e;
+        }
+
+        body {
+            background: #050505;
+            color: #fff;
+            font-family: 'Minecraftia', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+            background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), 
+                              url('https://www.nintendo.com/eu/media/images/10_share_images/games_15/nintendo_switch_4/2x1_NSwitch_Minecraft_image600w.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            transition: background 0.5s ease;
+        }
+
+        /* Contenedor Moderno */
+        .app-window {
+            width: 90%;
+            max-width: 900px;
+            margin: 50px 0;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-top: 5px solid var(--neon-green);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.9);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 {
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            font-size: 2rem;
+            color: var(--neon-green);
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .input-box {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid #333;
+            padding: 15px;
+            color: #fff;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'Minecraftia', sans-serif;
+            border-radius: 4px;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        .input-box:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+            outline: none;
+        }
+
+        label { color: #aaa; font-size: 0.8rem; text-transform: uppercase; }
+
+        .btn-submit {
+            background: var(--neon-green);
+            border: none;
+            padding: 20px;
+            width: 100%;
+            font-family: 'Minecraftia', sans-serif;
+            font-size: 1.2rem;
+            color: #000;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: 0.3s;
+        }
+
+        .btn-submit:hover { filter: brightness(1.2); box-shadow: 0 0 30px var(--neon-green); }
+
+        /* Estilos de los Overlays (Ban/Aceptado) */
+        #final-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-weight: bold;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .ban-bg { 
+            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.8)), url('https://xforgeassets001.xboxlive.com/pf-namespace-b63a0803d3653643/7479ff63-d2c3-42a8-954f-596610b06eee/ShadowCloaks_Thumbnail_0.jpg') !important; 
+            color: #fff; 
+            text-shadow: 2px 2px #000, 0 0 20px red; 
+        }
+        
+        .win-bg { 
+            background-image: linear-gradient(rgba(0,255,136,0.6), rgba(0,0,0,0.9)), url('https://i.redd.it/pvtq01k812o61.png') !important; 
+            color: #fff; 
+            text-shadow: 2px 2px #000, 0 0 20px var(--neon-green);
+        }
+
+        /* Admin Panel Pro */
+        #admin-panel {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5000;
+            padding: 50px;
+            overflow-y: auto;
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('https://es.minecraft.wiki/images/thumb/Command_block_textures.png/300px-Command_block_textures.png?3ff73');
+            background-size: contain;
+        }
+
+        .card {
+            background: var(--glass);
+            border: 2px solid #555;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+
+        /* BOTONES ESTILO MINECRAFT */
+        .btn-group { display: flex; gap: 15px; margin-top: 20px; }
+        
+        .mc-button {
+            position: relative;
+            background: var(--mc-btn-bg);
+            border: 4px solid;
+            border-color: var(--mc-btn-border-light) var(--mc-btn-border-dark) var(--mc-btn-border-dark) var(--mc-btn-border-light);
+            color: #373737;
+            padding: 12px;
+            font-family: 'Minecraftia', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-align: center;
+            text-shadow: 1px 1px #eee;
+            flex: 1;
+            box-shadow: inset -2px -2px 0px #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mc-button:hover {
+            background: #7e7e7e;
+            color: #fff;
+            text-shadow: 1px 1px #000;
+        }
+
+        .mc-button:active {
+            border-color: var(--mc-btn-border-dark) var(--mc-btn-border-light) var(--mc-btn-border-light) var(--mc-btn-border-dark);
+            box-shadow: inset 2px 2px 0px #555;
+        }
+
+        .mc-accept:hover { background: #3fa03f; }
+        .mc-ban:hover { background: #a03f3f; }
+
+    </style>
+</head>
+<body>
+
+<div id="main-ui" class="app-window">
+    <h1>THEBLAZE <span style="color:#fff">APPLY</span></h1>
+    <form id="postuForm">
+        <label>Nick de Minecraft</label>
+        <input type="text" id="v1" class="input-box" required>
+
+        <label>Nick de Discord</label>
+        <input type="text" id="v2" class="input-box" required>
+
+        <label>Edad</label>
+        <select id="v3" class="input-box">
+            <option>Menos de 12</option>
+            <option>12</option>
+            <option>Más de 12</option>
+        </select>
+
+        <label>¿Premium?</label>
+        <select id="v4" class="input-box"><option>Si</option><option>No</option></select>
+
+        <label>Tiempo jugando Minecraft</label>
+        <input type="text" id="v5" class="input-box">
+
+        <label>¿Activo?</label>
+        <select id="v6" class="input-box"><option>Si</option><option>No</option></select>
+
+        <label>¿Conoces la ID? Explícala</label>
+        <textarea id="v7" class="input-box" rows="3"></textarea>
+
+        <label>Sanciones en Minecraft</label>
+        <input type="text" id="v8" class="input-box">
+
+        <label>Sanciones Discord TheBlaze</label>
+        <input type="text" id="v9" class="input-box">
+
+        <label>Diferencia Spam y Flood</label>
+        <textarea id="v10" class="input-box"></textarea>
+
+        <label>¿Qué es un Warn?</label>
+        <input type="text" id="v11" class="input-box">
+
+        <label>¿Staff en otra network?</label>
+        <select id="v12" class="input-box"><option>Si</option><option>No</option></select>
+
+        <label>Experiencia como staff</label>
+        <textarea id="v13" class="input-box"></textarea>
+
+        <label>Experiencia programando</label>
+        <textarea id="v14" class="input-box"></textarea>
+
+        <label>10 bots que no estén en TheBlaze</label>
+        <textarea id="v15" class="input-box"></textarea>
+
+        <label>¿Qué harías ante algo ilegal?</label>
+        <textarea id="v16" class="input-box"></textarea>
+
+        <label>10 comandos útiles Discord</label>
+        <textarea id="v17" class="input-box"></textarea>
+
+        <label>10 comandos útiles Nautic</label>
+        <textarea id="v18" class="input-box"></textarea>
+
+        <label>Si tu amigo hace algo ilegal</label>
+        <textarea id="v19" class="input-box"></textarea>
+
+        <label>¿Staff corrupto?</label>
+        <textarea id="v20" class="input-box"></textarea>
+
+        <label>¿Aceptas el rol staff?</label>
+        <select id="v21" class="input-box"><option>Si</option><option>No</option></select>
+
+        <button type="submit" class="btn-submit">ENVIAR AL SISTEMA</button>
+    </form>
+</div>
+
+<div id="admin-panel">
+    <h1 style="text-align:left; color: white;">SISTEMA ADMINISTRATIVO</h1>
+    <div id="cards-container"></div>
+</div>
+
+<div id="final-screen">
+    <div id="final-msg" style="font-size: 2.5rem; padding: 20px; background: rgba(0,0,0,0.7);"></div>
+</div>
+
+<script>
+    // Audios
+    const sCreeper = new Audio('https://minecraft.wiki/images/Creeper_prime1.ogg');
+    const sExplosion = new Audio('https://minecraft.wiki/images/Explosion1.ogg');
+    const sLevel = new Audio('https://minecraft.wiki/images/Level_up.ogg');
+
+    // Seguridad
+    const NORMAL_PASS = "TH3BL4Z3APPLYS";
+    const TRAP_PASS = "01110000 01100101 01101100 01101111 01110100 01110101 01100100 01101111";
+    let devMode = false;
+
+    // Detector de Toolbox (DevTools)
+    const checkDev = () => {
+        const t1 = Date.now();
+        debugger;
+        if (Date.now() - t1 > 100) devMode = true;
+    };
+    setInterval(checkDev, 1000);
+
+    // F4 para Panel
+    window.addEventListener('keydown', (e) => {
+        if (e.key === "F4") {
+            e.preventDefault();
+            let pass = prompt("CONTRASEÑA DE ACCESO:");
+            
+            if (devMode || pass === TRAP_PASS) {
+                if (pass === TRAP_PASS) {
+                    executeEnd('ban', 'HAS SIDO BANEADO POR INTENTO DE HACKING');
+                }
+            } else if (pass === NORMAL_PASS) {
+                openAdmin();
+            }
+        }
+    });
+
+    function openAdmin() {
+        document.getElementById('admin-panel').style.display = 'block';
+        const cont = document.getElementById('cards-container');
+        cont.innerHTML = "";
+        let db = JSON.parse(localStorage.getItem('theblaze_data') || "[]");
+
+        db.forEach((item, i) => {
+            let div = document.createElement('div');
+            div.className = "card";
+            div.innerHTML = `
+                <h2 style="color:var(--neon-green)">POSTULACION NUMERO ${i+1}</h2>
+                <div style="font-size:0.8rem; line-height:2; border-top:1px solid #333; padding-top:10px; color: white;">
+                    ${Object.entries(item).map(([k,v]) => `<div><b>${k}:</b> ${v}</div>`).join('')}
+                </div>
+                <div class="btn-group">
+                    <button class="mc-button mc-accept" onclick="executeEnd('win', 'TU POSTULACION HA SIDO ACEPTADA CREA TICKET O SE PACIENTE Y ESTATE ATENTO EN TU MD')">ACEPTAR</button>
+                    <button class="mc-button" onclick="this.parentElement.parentElement.remove()">RECHAZAR</button>
+                    <button class="mc-button mc-ban" onclick="executeEnd('ban', 'HA SIDO BANEADO POR UN ADMINISTRADOR DE LA POSTULACION')">BANEAR</button>
+                </div>
+            `;
+            cont.appendChild(div);
+        });
+    }
+
+    function executeEnd(mode, text) {
+        const screen = document.getElementById('final-screen');
+        const msg = document.getElementById('final-msg');
+        screen.style.display = 'flex';
+        screen.className = mode === 'ban' ? 'ban-bg' : 'win-bg';
+        msg.innerText = text;
+
+        if (mode === 'ban') {
+            sCreeper.play();
+            setTimeout(() => sExplosion.play(), 2000);
+        } else {
+            sLevel.play();
+        }
+    }
+
+    document.getElementById('postuForm').onsubmit = (e) => {
+        e.preventDefault();
+        let db = JSON.parse(localStorage.getItem('theblaze_data') || "[]");
+        let data = {};
+        for(let i=1; i<=21; i++) {
+            data["Pregunta_" + i] = document.getElementById("v" + i).value;
+        }
+        db.push(data);
+        localStorage.setItem('theblaze_data', JSON.stringify(db));
+        alert("¡POSTULACIÓN ENVIADA CON ÉXITO!");
+        e.target.reset();
+    };
+</script>
+</body>
+</html>
