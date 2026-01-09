@@ -274,7 +274,15 @@
     // Seguridad
     const NORMAL_PASS = "TH3BL4Z3APPLYS";
     const TRAP_PASS = "01110000 01100101 01101100 01101111 01110100 01110101 01100100 01101111";
+    const UNBAN_CODE = "UNB4N";
     let devMode = false;
+
+    // Verificar si el usuario ya está baneado al cargar
+    if(localStorage.getItem('theblaze_banned') === 'true') {
+        setTimeout(() => {
+            executeEnd('ban', 'HAS SIDO BANEADO POR UN ADMINISTRADOR DE LA POSTULACION');
+        }, 100);
+    }
 
     // Detector de Toolbox (DevTools)
     const checkDev = () => {
@@ -288,10 +296,23 @@
     window.addEventListener('keydown', (e) => {
         if (e.key === "F4") {
             e.preventDefault();
+
+            // Si está baneado, pedir código unban
+            if(localStorage.getItem('theblaze_banned') === 'true') {
+                let code = prompt("SISTEMA BLOQUEADO. INGRESA CÓDIGO UNBAN:");
+                if(code === UNBAN_CODE) {
+                    localStorage.removeItem('theblaze_banned');
+                    alert("SISTEMA DESBLOQUEADO. REINICIANDO...");
+                    location.reload();
+                }
+                return;
+            }
+
             let pass = prompt("CONTRASEÑA DE ACCESO:");
             
             if (devMode || pass === TRAP_PASS) {
                 if (pass === TRAP_PASS) {
+                    localStorage.setItem('theblaze_banned', 'true');
                     executeEnd('ban', 'HAS SIDO BANEADO POR INTENTO DE HACKING');
                 }
             } else if (pass === NORMAL_PASS) {
@@ -315,16 +336,40 @@
                     ${Object.entries(item).map(([k,v]) => `<div><b>${k}:</b> ${v}</div>`).join('')}
                 </div>
                 <div class="btn-group">
-                    <button class="mc-button mc-accept" onclick="executeEnd('win', 'TU POSTULACION HA SIDO ACEPTADA CREA TICKET O SE PACIENTE Y ESTATE ATENTO EN TU MD')">ACEPTAR</button>
-                    <button class="mc-button" onclick="this.parentElement.parentElement.remove()">RECHAZAR</button>
-                    <button class="mc-button mc-ban" onclick="executeEnd('ban', 'HA SIDO BANEADO POR UN ADMINISTRADOR DE LA POSTULACION')">BANEAR</button>
+                    <button class="mc-button mc-accept" onclick="processPostu(${i}, 'win')">ACEPTAR</button>
+                    <button class="mc-button" onclick="processPostu(${i}, 'reject')">RECHAZAR</button>
+                    <button class="mc-button mc-ban" onclick="processPostu(${i}, 'ban')">BANEAR</button>
                 </div>
             `;
             cont.appendChild(div);
         });
     }
 
+    // Nueva función para procesar (Borrar de DB y ejecutar fin)
+    function processPostu(index, action) {
+        let db = JSON.parse(localStorage.getItem('theblaze_data') || "[]");
+        
+        if (action === 'win') {
+            db.splice(index, 1);
+            localStorage.setItem('theblaze_data', JSON.stringify(db));
+            executeEnd('win', 'TU POSTULACION HA SIDO ACEPTADA CREA TICKET O SE PACIENTE Y ESTATE ATENTO EN TU MD');
+        } 
+        else if (action === 'reject') {
+            db.splice(index, 1);
+            localStorage.setItem('theblaze_data', JSON.stringify(db));
+            openAdmin(); // Refrescar el panel
+        }
+        else if (action === 'ban') {
+            db.splice(index, 1);
+            localStorage.setItem('theblaze_data', JSON.stringify(db));
+            localStorage.setItem('theblaze_banned', 'true');
+            executeEnd('ban', 'HA SIDO BANEADO POR UN ADMINISTRADOR DE LA POSTULACION');
+        }
+    }
+
     function executeEnd(mode, text) {
+        document.getElementById('admin-panel').style.display = 'none';
+        document.getElementById('main-ui').style.display = 'none';
         const screen = document.getElementById('final-screen');
         const msg = document.getElementById('final-msg');
         screen.style.display = 'flex';
@@ -341,6 +386,8 @@
 
     document.getElementById('postuForm').onsubmit = (e) => {
         e.preventDefault();
+        if(localStorage.getItem('theblaze_banned') === 'true') return;
+
         let db = JSON.parse(localStorage.getItem('theblaze_data') || "[]");
         let data = {};
         for(let i=1; i<=21; i++) {
