@@ -114,17 +114,15 @@
 
 <script>
     const MASTER_KEY = "$2a$10$Axc/bU98eP8gJ.xFYRIA8OL.1yGeVRU6tzUigKHgfKKKKo8QBiSyu";
-    const BIN_ID = "659617aabd0ea881f406070bd";
+    const BIN_ID = "6961823dae596e708fd0ff01"; // TU NUEVO BIN ACTUALIZADO
     const NORMAL_PASS = "TH3BL4Z3APPLYS";
 
-    // --- FUNCIÓN DE CONEXIÓN MAESTRA (CORRIGE EL ERROR DE RED/CORS) ---
     async function cloudRequest(method = 'GET', bodyData = null) {
         const url = `https://api.jsonbin.io/v3/b/${BIN_ID}${method === 'GET' ? '/latest' : ''}`;
-        const headers = {
-            "Content-Type": "application/json",
-            "X-Master-Key": MASTER_KEY,
-            "X-Bin-Private": "true"
-        };
+        
+        // Cabeceras simplificadas para evitar bloqueos CORS
+        const headers = { "X-Master-Key": MASTER_KEY };
+        if (bodyData) headers["Content-Type"] = "application/json";
 
         const response = await fetch(url, {
             method: method,
@@ -136,7 +134,6 @@
         return await response.json();
     }
 
-    // Verificar estado al cargar
     window.onload = async () => {
         try {
             const data = await cloudRequest('GET');
@@ -144,10 +141,9 @@
                 document.getElementById('main-ui').style.display = 'none';
                 document.getElementById('closed-msg').style.display = 'block';
             }
-        } catch(e) { console.error("Error de inicio:", e); }
+        } catch(e) { console.error("Error inicial:", e); }
     };
 
-    // F4 para Admin
     window.addEventListener('keydown', (e) => {
         if (e.key === "F4") {
             let pass = prompt("ADMIN PASS:");
@@ -162,17 +158,17 @@
             await cloudRequest('PUT', data.record);
             alert(status ? "SISTEMA ABIERTO" : "SISTEMA CERRADO");
             location.reload();
-        } catch(e) { alert("Error al cambiar estado"); }
+        } catch(e) { alert("Error al conectar."); }
     }
 
     async function deletePostu(index) {
-        if(!confirm("¿BORRAR POSTULACIÓN?")) return;
+        if(!confirm("¿BORRAR?")) return;
         try {
             const data = await cloudRequest('GET');
             data.record.postulaciones.splice(index, 1);
             await cloudRequest('PUT', data.record);
             openAdmin();
-        } catch(e) { alert("Error al borrar"); }
+        } catch(e) { alert("Error al borrar."); }
     }
 
     document.getElementById('postuForm').onsubmit = async (e) => {
@@ -185,22 +181,24 @@
             const data = await cloudRequest('GET');
             
             if (data.record.sistema_abierto === false) {
-                alert("¡CERRADO!");
+                alert("SISTEMA CERRADO");
                 location.reload();
                 return;
             }
 
             let formData = { fecha: new Date().toLocaleString() };
-            for(let i=1; i<=21; i++) formData["P"+i] = document.getElementById("v"+i).value;
+            for(let i=1; i<=21; i++) {
+                formData["P"+i] = document.getElementById("v"+i).value;
+            }
 
             if(!data.record.postulaciones) data.record.postulaciones = [];
             data.record.postulaciones.push(formData);
 
             await cloudRequest('PUT', data.record);
-            alert("ENVIADO CON ÉXITO");
+            alert("¡ENVIADO CON ÉXITO!");
             e.target.reset();
         } catch (err) { 
-            alert("Error de red. Asegúrate de que el BIN tiene: { \"sistema_abierto\": true, \"postulaciones\": [] }"); 
+            alert("Error de red. Verifica que tu Bin no esté vacío."); 
         } finally { 
             btn.disabled = false; 
             btn.innerText = "ENVIAR AL SISTEMA";
