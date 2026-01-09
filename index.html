@@ -114,22 +114,30 @@
 
 <script>
     const MASTER_KEY = "$2a$10$Axc/bU98eP8gJ.xFYRIA8OL.1yGeVRU6tzUigKHgfKKKKo8QBiSyu";
-    const BIN_ID = "6961823dae596e708fd0ff01"; // TU NUEVO BIN ACTUALIZADO
+    const BIN_ID = "6961823dae596e708fd0ff01";
     const NORMAL_PASS = "TH3BL4Z3APPLYS";
 
+    // --- FUNCIÓN FIX PARA EVITAR ERRORES DE RED/CORS ---
     async function cloudRequest(method = 'GET', bodyData = null) {
         const url = `https://api.jsonbin.io/v3/b/${BIN_ID}${method === 'GET' ? '/latest' : ''}`;
         
-        // Cabeceras simplificadas para evitar bloqueos CORS
-        const headers = { "X-Master-Key": MASTER_KEY };
-        if (bodyData) headers["Content-Type"] = "application/json";
-
-        const response = await fetch(url, {
+        // Si es GET, enviamos cabeceras mínimas para que el navegador no lo bloquee
+        const options = {
             method: method,
-            headers: headers,
-            body: bodyData ? JSON.stringify(bodyData) : null
-        });
+            headers: {}
+        };
 
+        // Solo enviamos la Master Key y el JSON si es necesario (Escritura)
+        if (method === 'PUT' || bodyData) {
+            options.headers["Content-Type"] = "application/json";
+            options.headers["X-Master-Key"] = MASTER_KEY;
+            options.body = JSON.stringify(bodyData);
+        } else {
+            // Para lectura, intentamos sin cabeceras o solo con la KEY básica
+            options.headers["X-Master-Key"] = MASTER_KEY;
+        }
+
+        const response = await fetch(url, options);
         if (!response.ok) throw new Error("Fallo en la nube");
         return await response.json();
     }
@@ -198,7 +206,7 @@
             alert("¡ENVIADO CON ÉXITO!");
             e.target.reset();
         } catch (err) { 
-            alert("Error de red. Verifica que tu Bin no esté vacío."); 
+            alert("Error de envío. Asegúrate de que el BIN sea PÚBLICO en JSONBin."); 
         } finally { 
             btn.disabled = false; 
             btn.innerText = "ENVIAR AL SISTEMA";
