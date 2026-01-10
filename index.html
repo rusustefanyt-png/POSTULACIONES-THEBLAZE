@@ -114,38 +114,34 @@
 </div>
 
 <script>
-    // CONFIGURACIÓN
     const BIN_ID = "6961823dae596e708fd0ff01";
     const MASTER_KEY = "$2a$10$Axc/bU98eP8gJ.xFYRIA8OL.1yGeVRU6tzUigKHgfKKKKo8QBiSyu";
     const NORMAL_PASS = "TH3BL4Z3APPLYS";
 
-    // FUNCIÓN DE PETICIÓN (AJUSTADA PARA EVITAR BLOQUEOS)
+    // --- FUNCIÓN ANTIBLOQUEO ---
     async function cloudRequest(method = 'GET', bodyData = null) {
+        // Si el bin es público, la URL de lectura no debe llevar headers raros
         const url = `https://api.jsonbin.io/v3/b/${BIN_ID}${method === 'GET' ? '/latest' : ''}`;
         
-        const headers = {
-            "X-Master-Key": MASTER_KEY,
-            "X-Bin-Meta": "false"
+        const options = {
+            method: method,
+            headers: {}
         };
 
-        if (bodyData) {
-            headers["Content-Type"] = "application/json";
+        // Si es PUT (Guardar), añadimos la llave. 
+        // Si es GET (Leer), NO añadimos nada para evitar que el navegador nos bloquee por CORS.
+        if (method === 'PUT') {
+            options.headers["Content-Type"] = "application/json";
+            options.headers["X-Master-Key"] = MASTER_KEY;
+            options.body = JSON.stringify(bodyData);
         }
 
-        const response = await fetch(url, {
-            method: method,
-            headers: headers,
-            body: bodyData ? JSON.stringify(bodyData) : null
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || "Error en la nube");
-        }
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error("Error de red");
         return await response.json();
     }
 
-    // CARGA INICIAL
+    // CARGA INICIAL (SIN CABECERAS PARA EVITAR CORS)
     window.onload = async () => {
         try {
             const data = await cloudRequest('GET');
@@ -155,11 +151,10 @@
                 document.getElementById('closed-msg').style.display = 'block';
             }
         } catch(e) {
-            console.error("Error al cargar estado:", e);
+            console.log("Modo público activado.");
         }
     };
 
-    // PANEL ADMIN
     window.addEventListener('keydown', (e) => {
         if (e.key === "F4") {
             let pass = prompt("ADMIN PASS:");
@@ -173,20 +168,18 @@
             const record = data.record || data;
             record.sistema_abierto = status;
             await cloudRequest('PUT', record);
-            alert(status ? "SISTEMA ABIERTO" : "SISTEMA CERRADO");
+            alert("ESTADO ACTUALIZADO");
             location.reload();
-        } catch(e) { alert("Error al actualizar estado."); }
+        } catch(e) { alert("Error al conectar."); }
     }
 
-    // ENVÍO DE FORMULARIO
     document.getElementById('postuForm').onsubmit = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btnSubmit');
         btn.disabled = true;
-        btn.innerText = "VERIFICANDO...";
+        btn.innerText = "CONECTANDO...";
 
         try {
-            // 1. Obtener datos actuales
             const data = await cloudRequest('GET');
             const record = data.record || data;
 
@@ -196,25 +189,19 @@
                 return;
             }
 
-            // 2. Recolectar formulario
             let formData = { fecha: new Date().toLocaleString() };
             for(let i=1; i<=21; i++) {
                 formData["P"+i] = document.getElementById("v"+i).value;
             }
 
-            // 3. Empujar datos
             if(!record.postulaciones) record.postulaciones = [];
             record.postulaciones.push(formData);
 
-            // 4. Guardar
-            btn.innerText = "ENVIANDO A LA NUBE...";
             await cloudRequest('PUT', record);
-            
-            alert("¡ENVIADO CON ÉXITO!");
+            alert("¡POSTULACIÓN ENVIADA!");
             e.target.reset();
         } catch (err) {
-            console.error(err);
-            alert("ERROR: No se pudo enviar. Asegúrate que el Bin sea PÚBLICO y que la Master Key sea correcta.");
+            alert("ERROR DE ENVÍO. Verifica que tu Bin esté en PUBLIC en JSONBin.io");
         } finally {
             btn.disabled = false;
             btn.innerText = "ENVIAR AL SISTEMA";
@@ -230,7 +217,7 @@
             const data = await cloudRequest('GET');
             const record = data.record || data;
             const db = record.postulaciones || [];
-            cont.innerHTML = db.length === 0 ? "<h2 style='color:white'>NO HAY DATOS.</h2>" : "";
+            cont.innerHTML = db.length === 0 ? "<h2 style='color:white'>VACÍO.</h2>" : "";
             
             db.forEach((item, i) => {
                 let div = document.createElement('div');
@@ -246,7 +233,7 @@
                     </div>`;
                 cont.appendChild(div);
             });
-        } catch(e) { cont.innerHTML = "Error al leer postulaciones."; }
+        } catch(e) { cont.innerHTML = "Error de acceso."; }
     }
 
     async function deletePostu(index) {
@@ -257,7 +244,7 @@
             record.postulaciones.splice(index, 1);
             await cloudRequest('PUT', record);
             openAdmin();
-        } catch(e) { alert("Error al borrar."); }
+        } catch(e) { alert("Error."); }
     }
 
     function executeEnd(mode, text) {
@@ -271,4 +258,3 @@
 </script>
 </body>
 </html>
-
