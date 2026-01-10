@@ -26,6 +26,7 @@
                               url('https://www.nintendo.com/eu/media/images/10_share_images/games_15/nintendo_switch_4/2x1_NSwitch_Minecraft_image600w.jpg');
             background-size: cover;
             background-attachment: fixed;
+            overflow-x: hidden;
         }
 
         .app-window {
@@ -62,7 +63,7 @@
         .win-bg { background-image: linear-gradient(rgba(0,255,136,0.6), rgba(0,0,0,0.9)), url('https://i.redd.it/pvtq01k812o61.png'); background-size: cover; }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
 <div id="closed-msg" style="display:none; text-align:center; margin-top:100px; width: 100%;">
     <h1 style="color:var(--neon-red); font-size:3rem;">POSTULACIONES CERRADAS</h1>
@@ -118,21 +119,37 @@
     const MASTER_KEY = "$2a$10$Axc/bU98eP8gJ.xFYRIA8OL.1yGeVRU6tzUigKHgfKKKKo8QBiSyu";
     const NORMAL_PASS = "TH3BL4Z3APPLYS";
 
-    // --- FUNCIÓN ANTIBLOQUEO ---
-    async function cloudRequest(method = 'GET', bodyData = null) {
-        // Si el bin es público, la URL de lectura no debe llevar headers raros
-        const url = `https://api.jsonbin.io/v3/b/${BIN_ID}${method === 'GET' ? '/latest' : ''}`;
+    // --- PROTECCIÓN TOOLBOX ---
+    function antiHack() {
+        const threshold = 160;
+        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
         
+        if (widthThreshold || heightThreshold) {
+            sessionStorage.setItem('isBanned', 'true');
+            location.reload();
+        }
+    }
+
+    if (sessionStorage.getItem('isBanned')) {
+        setTimeout(() => executeEnd('ban', 'INTENTO DE HACKING'), 100);
+    }
+
+    setInterval(antiHack, 1000);
+
+    // --- LÓGICA DE NUBE ---
+    async function cloudRequest(method = 'GET', bodyData = null) {
+        const url = `https://api.jsonbin.io/v3/b/${BIN_ID}${method === 'GET' ? '/latest' : ''}`;
         const options = {
             method: method,
-            headers: {}
+            headers: {
+                "X-Master-Key": MASTER_KEY,
+                "X-Bin-Meta": "false"
+            }
         };
 
-        // Si es PUT (Guardar), añadimos la llave. 
-        // Si es GET (Leer), NO añadimos nada para evitar que el navegador nos bloquee por CORS.
         if (method === 'PUT') {
             options.headers["Content-Type"] = "application/json";
-            options.headers["X-Master-Key"] = MASTER_KEY;
             options.body = JSON.stringify(bodyData);
         }
 
@@ -141,18 +158,15 @@
         return await response.json();
     }
 
-    // CARGA INICIAL (SIN CABECERAS PARA EVITAR CORS)
     window.onload = async () => {
         try {
             const data = await cloudRequest('GET');
-            const record = data.record || data;
+            const record = data.record ? data.record : data;
             if (record.sistema_abierto === false) {
                 document.getElementById('main-ui').style.display = 'none';
                 document.getElementById('closed-msg').style.display = 'block';
             }
-        } catch(e) {
-            console.log("Modo público activado.");
-        }
+        } catch(e) { console.log("Cargado."); }
     };
 
     window.addEventListener('keydown', (e) => {
@@ -162,32 +176,15 @@
         }
     });
 
-    async function setSystemStatus(status) {
-        try {
-            const data = await cloudRequest('GET');
-            const record = data.record || data;
-            record.sistema_abierto = status;
-            await cloudRequest('PUT', record);
-            alert("ESTADO ACTUALIZADO");
-            location.reload();
-        } catch(e) { alert("Error al conectar."); }
-    }
-
     document.getElementById('postuForm').onsubmit = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btnSubmit');
         btn.disabled = true;
-        btn.innerText = "CONECTANDO...";
+        btn.innerText = "PROCESANDO...";
 
         try {
             const data = await cloudRequest('GET');
-            const record = data.record || data;
-
-            if (record.sistema_abierto === false) {
-                alert("SISTEMA CERRADO");
-                location.reload();
-                return;
-            }
+            const record = data.record ? data.record : data;
 
             let formData = { fecha: new Date().toLocaleString() };
             for(let i=1; i<=21; i++) {
@@ -201,7 +198,7 @@
             alert("¡POSTULACIÓN ENVIADA!");
             e.target.reset();
         } catch (err) {
-            alert("ERROR DE ENVÍO. Verifica que tu Bin esté en PUBLIC en JSONBin.io");
+            alert("ERROR: No se pudo conectar a la base de datos.");
         } finally {
             btn.disabled = false;
             btn.innerText = "ENVIAR AL SISTEMA";
@@ -215,32 +212,29 @@
 
         try {
             const data = await cloudRequest('GET');
-            const record = data.record || data;
+            const record = data.record ? data.record : data;
             const db = record.postulaciones || [];
-            cont.innerHTML = db.length === 0 ? "<h2 style='color:white'>VACÍO.</h2>" : "";
+            cont.innerHTML = db.length === 0 ? "VACÍO" : "";
             
             db.forEach((item, i) => {
                 let div = document.createElement('div');
                 div.className = "card";
                 div.innerHTML = `
                     <h2 style="color:var(--neon-green)">POSTULANTE #${i+1}</h2>
-                    <div style="font-size:0.75rem; color:#fff; line-height:1.4;">
+                    <div style="font-size:0.75rem; color:#fff;">
                         ${Object.entries(item).map(([k,v]) => `<div><b>${k}:</b> ${v}</div>`).join('')}
                     </div>
-                    <div style="margin-top:15px; display:flex; gap:10px;">
-                        <button class="mc-button" style="background:#3fa03f; color:white;" onclick="executeEnd('win', 'ACEPTADO')">ACEPTAR</button>
-                        <button class="mc-button" style="background:#ff4444; color:white;" onclick="deletePostu(${i})">BORRAR</button>
-                    </div>`;
+                    <button class="mc-button" style="background:#ff4444; color:white; margin-top:10px;" onclick="deletePostu(${i})">BORRAR</button>`;
                 cont.appendChild(div);
             });
-        } catch(e) { cont.innerHTML = "Error de acceso."; }
+        } catch(e) { cont.innerHTML = "Error."; }
     }
 
     async function deletePostu(index) {
-        if(!confirm("¿BORRAR?")) return;
+        if(!confirm("BORRAR?")) return;
         try {
             const data = await cloudRequest('GET');
-            const record = data.record || data;
+            const record = data.record ? data.record : data;
             record.postulaciones.splice(index, 1);
             await cloudRequest('PUT', record);
             openAdmin();
