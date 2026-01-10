@@ -45,7 +45,8 @@
         .input-box { background: rgba(0,0,0,0.4); border: 2px solid #333; padding: 15px; color: #fff; width: 100%; box-sizing: border-box; font-family: 'Minecraftia', sans-serif; border-radius: 4px; margin-top: 10px; }
         label { color: #aaa; font-size: 0.8rem; text-transform: uppercase; }
 
-        .btn-submit { background: var(--neon-green); border: none; padding: 20px; width: 100%; font-family: 'Minecraftia', sans-serif; font-size: 1.2rem; cursor: pointer; margin-top: 30px; }
+        .btn-submit { background: var(--neon-green); border: none; padding: 20px; width: 100%; font-family: 'Minecraftia', sans-serif; font-size: 1.2rem; cursor: pointer; margin-top: 30px; transition: 0.3s; }
+        .btn-submit:disabled { background: #444; cursor: not-allowed; }
         
         #admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5000; padding: 50px; overflow-y: auto; background: rgba(0,0,0,0.95); box-sizing: border-box; }
         .admin-controls { display: flex; gap: 20px; margin-bottom: 30px; background: #222; padding: 20px; border-radius: 8px; border: 1px solid #444; }
@@ -113,45 +114,52 @@
 </div>
 
 <script>
-    const MASTER_KEY = "$2a$10$Axc/bU98eP8gJ.xFYRIA8OL.1yGeVRU6tzUigKHgfKKKKo8QBiSyu";
+    // CONFIGURACIÓN
     const BIN_ID = "6961823dae596e708fd0ff01";
+    const MASTER_KEY = "$2a$10$Axc/bU98eP8gJ.xFYRIA8OL.1yGeVRU6tzUigKHgfKKKKo8QBiSyu";
     const NORMAL_PASS = "TH3BL4Z3APPLYS";
 
-    // --- FUNCIÓN FIX PARA EVITAR ERRORES DE RED/CORS ---
+    // FUNCIÓN DE PETICIÓN (AJUSTADA PARA EVITAR BLOQUEOS)
     async function cloudRequest(method = 'GET', bodyData = null) {
         const url = `https://api.jsonbin.io/v3/b/${BIN_ID}${method === 'GET' ? '/latest' : ''}`;
         
-        // Si es GET, enviamos cabeceras mínimas para que el navegador no lo bloquee
-        const options = {
-            method: method,
-            headers: {}
+        const headers = {
+            "X-Master-Key": MASTER_KEY,
+            "X-Bin-Meta": "false"
         };
 
-        // Solo enviamos la Master Key y el JSON si es necesario (Escritura)
-        if (method === 'PUT' || bodyData) {
-            options.headers["Content-Type"] = "application/json";
-            options.headers["X-Master-Key"] = MASTER_KEY;
-            options.body = JSON.stringify(bodyData);
-        } else {
-            // Para lectura, intentamos sin cabeceras o solo con la KEY básica
-            options.headers["X-Master-Key"] = MASTER_KEY;
+        if (bodyData) {
+            headers["Content-Type"] = "application/json";
         }
 
-        const response = await fetch(url, options);
-        if (!response.ok) throw new Error("Fallo en la nube");
+        const response = await fetch(url, {
+            method: method,
+            headers: headers,
+            body: bodyData ? JSON.stringify(bodyData) : null
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "Error en la nube");
+        }
         return await response.json();
     }
 
+    // CARGA INICIAL
     window.onload = async () => {
         try {
             const data = await cloudRequest('GET');
-            if (data.record.sistema_abierto === false) {
+            const record = data.record || data;
+            if (record.sistema_abierto === false) {
                 document.getElementById('main-ui').style.display = 'none';
                 document.getElementById('closed-msg').style.display = 'block';
             }
-        } catch(e) { console.error("Error inicial:", e); }
+        } catch(e) {
+            console.error("Error al cargar estado:", e);
+        }
     };
 
+    // PANEL ADMIN
     window.addEventListener('keydown', (e) => {
         if (e.key === "F4") {
             let pass = prompt("ADMIN PASS:");
@@ -162,53 +170,53 @@
     async function setSystemStatus(status) {
         try {
             const data = await cloudRequest('GET');
-            data.record.sistema_abierto = status;
-            await cloudRequest('PUT', data.record);
+            const record = data.record || data;
+            record.sistema_abierto = status;
+            await cloudRequest('PUT', record);
             alert(status ? "SISTEMA ABIERTO" : "SISTEMA CERRADO");
             location.reload();
-        } catch(e) { alert("Error al conectar."); }
+        } catch(e) { alert("Error al actualizar estado."); }
     }
 
-    async function deletePostu(index) {
-        if(!confirm("¿BORRAR?")) return;
-        try {
-            const data = await cloudRequest('GET');
-            data.record.postulaciones.splice(index, 1);
-            await cloudRequest('PUT', data.record);
-            openAdmin();
-        } catch(e) { alert("Error al borrar."); }
-    }
-
+    // ENVÍO DE FORMULARIO
     document.getElementById('postuForm').onsubmit = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btnSubmit');
         btn.disabled = true;
-        btn.innerText = "ENVIANDO...";
+        btn.innerText = "VERIFICANDO...";
 
         try {
+            // 1. Obtener datos actuales
             const data = await cloudRequest('GET');
-            
-            if (data.record.sistema_abierto === false) {
+            const record = data.record || data;
+
+            if (record.sistema_abierto === false) {
                 alert("SISTEMA CERRADO");
                 location.reload();
                 return;
             }
 
+            // 2. Recolectar formulario
             let formData = { fecha: new Date().toLocaleString() };
             for(let i=1; i<=21; i++) {
                 formData["P"+i] = document.getElementById("v"+i).value;
             }
 
-            if(!data.record.postulaciones) data.record.postulaciones = [];
-            data.record.postulaciones.push(formData);
+            // 3. Empujar datos
+            if(!record.postulaciones) record.postulaciones = [];
+            record.postulaciones.push(formData);
 
-            await cloudRequest('PUT', data.record);
+            // 4. Guardar
+            btn.innerText = "ENVIANDO A LA NUBE...";
+            await cloudRequest('PUT', record);
+            
             alert("¡ENVIADO CON ÉXITO!");
             e.target.reset();
-        } catch (err) { 
-            alert("Error de envío. Asegúrate de que el BIN sea PÚBLICO en JSONBin."); 
-        } finally { 
-            btn.disabled = false; 
+        } catch (err) {
+            console.error(err);
+            alert("ERROR: No se pudo enviar. Asegúrate que el Bin sea PÚBLICO y que la Master Key sea correcta.");
+        } finally {
+            btn.disabled = false;
             btn.innerText = "ENVIAR AL SISTEMA";
         }
     };
@@ -220,8 +228,9 @@
 
         try {
             const data = await cloudRequest('GET');
-            const db = data.record.postulaciones || [];
-            cont.innerHTML = db.length === 0 ? "<h2 style='color:white'>VACÍO.</h2>" : "";
+            const record = data.record || data;
+            const db = record.postulaciones || [];
+            cont.innerHTML = db.length === 0 ? "<h2 style='color:white'>NO HAY DATOS.</h2>" : "";
             
             db.forEach((item, i) => {
                 let div = document.createElement('div');
@@ -237,7 +246,18 @@
                     </div>`;
                 cont.appendChild(div);
             });
-        } catch(e) { cont.innerHTML = "Error de conexión."; }
+        } catch(e) { cont.innerHTML = "Error al leer postulaciones."; }
+    }
+
+    async function deletePostu(index) {
+        if(!confirm("¿BORRAR?")) return;
+        try {
+            const data = await cloudRequest('GET');
+            const record = data.record || data;
+            record.postulaciones.splice(index, 1);
+            await cloudRequest('PUT', record);
+            openAdmin();
+        } catch(e) { alert("Error al borrar."); }
     }
 
     function executeEnd(mode, text) {
@@ -251,3 +271,4 @@
 </script>
 </body>
 </html>
+
